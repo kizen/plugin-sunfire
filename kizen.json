@@ -1,0 +1,91 @@
+[
+  {
+    "name": "Sunfire",
+    "version": "2.0.1",
+    "published": true,
+    "api_name": "sunfire",
+    "description": "Quote and apply with SunFire",
+    "external_link": "https://www.sunfireinc.com/quoting-enrollment/",
+    "release_branches": ["main"],
+    "release_environments": ["dev", "fmo"],
+    "entry": "sunfire/",
+    "engine": "1.0.0",
+    "release_notes_directory": "releaseNotes/sunfire/",
+    "config_template": {
+      "partner_id": "",
+      "partner_app_id": ""
+    },
+    "developer_business_id": {
+      "integration": "725f64e5-4124-46cc-92c4-d16049add76e",
+      "staging": "725f64e5-4124-46cc-92c4-d16049add76e",
+      "fmo": "8d718242-26d2-41dc-a76c-ff0677f6242a"
+    },
+    "base_config": {},
+    "services": [
+      {
+        "service_name": "api_qa",
+        "display_name": "SunFire API QA Session",
+        "auth_type": "no_auth",
+        "required_entitlement": "sunfire_env",
+        "base_service_url": "https://qa-sunfire.sunfirematrix.com/",
+        "auth_credentials": {}
+      },
+      {
+        "service_name": "auth_qa",
+        "display_name": "SunFire API QA Auth",
+        "auth_type": "password_token_exchange",
+        "auth_level": "global",
+        "required_entitlement": "sunfire_env",
+        "base_service_url": "https://qa-sunfire.sunfirematrix.com/v2/",
+        "auth_credentials": {
+          "auth_url": "https://qa-sunfire.sunfirematrix.com/v2/authenticate",
+          "username": {
+            "encrypted": true,
+            "value": "eyJ2IjoxLCJhbGciOiJSU0EtT0FFUC0yNTYrQTI1NkdDTSIsImsiOiJva3BYUklqSXo5d2QzTE10by9ibnFnQnp4VSs2QlNxY0todzgxeDNpMlJLaGVhWllHRzNXa1lKcmk5RXhVM0JzeHZFWXZHYkI4VnlkaUFmcS9oWHB3MzBZY1ovcm1DYVM5cXNmbXU1dzc2Um5vRzFsTWpKM2NrUklUUGRBWVM0Z3JzY2UxUTByeStpYTRFTWRLNVQyY2QxWVpYM0UvZ3NHSEdid1pWaWN2dmFRb0xXZklKYVdyZTZ0czk1TWtucUducmRyZVkyYkUybkgwL3Jiekd0UndYVVloOVVpa2VoYmRIK0lNZUpzNnJSd3ZDaUZqcSszejhtUUJabjMvS0JLdmNVR3NXYTFFbUxDRkI0bzU5M0dtdFZtbVl1WTJiZlVCTktsNlFDUFhnYkR1THpOUlZUMVJvQXpwOEpaWG0zcTExZFRXTEROaWlEQnJrR1A3YzVTSnQyS3dGbjJDQVhQdHdZSy9Zbk5nemsxWndMV0tISWF5Y2tPbGczeVh0MHlidFZFNmpJcHVJM3NFODVMS1dWcDJwcFJkKzVDdUJqOXZ1cmVKaFRlMmwxODBFNEFQTWQ2Qi9yK2pMZkxIZjFBNGdvd3hNT2VvMngyM3FwRDNlSzQwRCtyTEdFVHpZelNLa0NraE9Db1VKSStEVGJTQVpCU3NTZ3Q3QThjQ3hwOSIsIml2IjoiekVveTl5amtsd1VFeEtENCIsInRhZyI6Ik52TEhhcjdGdjRRVUgvLzM5emVxbHc9PSIsImN0IjoiZThNVzRJaWlZMEZjSTNURjFSWT0ifQ=="
+          },
+          "password": {
+            "encrypted": true,
+            "value": "eyJ2IjoxLCJhbGciOiJSU0EtT0FFUC0yNTYrQTI1NkdDTSIsImsiOiJJMnZpWUpDczJGU3BGYWI0M0tlOGt4SjNQeTVLSXRxb2pKdnVKM2Vzd01xTDBTU2MyR09RNXhSeEJRNGlYRnBvNnFrRU9CSFdieEhlRk02UkhEbFJzc3ljc0FLZzB4ZEZodDhQN1NWMTNRTVd4MitESENIYlN6M1h4NnUvakZTVDRNL3JwelBEVWt6aDQxQlhUbTlROHY0L1FaYWI2YTJEWjZKRFdPVXlCTjRla2s1Q0RlVWZBYlJBUTN3YlVNa3Y5VUpiWVNYWTdJM2hzLzNzN3dIMHJyZjNsb3hFb2JHUDZvd3d2ZTZWK0ZWZnFad1JDcHRYV3Y2K29YZStkalhOcGVwaFFLRlFIU05LYTlKQ2ZiTytZSmVoQVhGd0tOWlJqWFdMVTZwbmF1eVI1azAvWmJheWluZ2o3RW1YSDRoRGVmMVdta3QyR1BubHFjanVrYmp6M1A2SXlLNDAreUdlekVxd2NCMW8rM1R1NG1UaVY2UytUVURjV1lpRmxNbXdrSTZWS1psdUxmenozK204dHY0dXpFSHFMclMrNXhzU3BoQWRxUG5BQ2JUTldqMXQwOUxWa3g3UUZuY0lBVTAwdG96MGxJQWQ5dTRqVHdEcFRhVTNBb3UyMmZ2WDNFQ1lyNUJHb2w4cmIyazNwNDAzbDA4dWRUSmNSalVRTTNidCIsIml2IjoiYzhZaFBFRWpIQXY5UThQbiIsInRhZyI6IkRaNkFab3hBRFdTdXVDZjd0OTlBSnc9PSIsImN0IjoiWEhXWUp0SzROcFRIVjlWRyJ9"
+          },
+          "content_type": "application/json",
+          "payload": {},
+          "token_field_name": "token",
+          "credential_placement": "body",
+          "proxy_request_token_prefix": "raw"
+        }
+      },
+      {
+        "service_name": "api_prod",
+        "display_name": "SunFire API Session",
+        "auth_type": "no_auth",
+        "required_entitlement": null,
+        "base_service_url": "https://www.sunfirematrix.com/",
+        "auth_credentials": {}
+      },
+      {
+        "service_name": "auth_prod",
+        "display_name": "SunFire API Auth",
+        "auth_type": "password_token_exchange",
+        "auth_level": "global",
+        "required_entitlement": null,
+        "base_service_url": "https://www.sunfirematrix.com/v2/",
+        "auth_credentials": {
+          "auth_url": "https://www.sunfirematrix.com/v2/authenticate",
+          "username": {
+            "encrypted": true,
+            "value": "eyJ2IjoxLCJhbGciOiJSU0EtT0FFUC0yNTYrQTI1NkdDTSIsImsiOiJva3BYUklqSXo5d2QzTE10by9ibnFnQnp4VSs2QlNxY0todzgxeDNpMlJLaGVhWllHRzNXa1lKcmk5RXhVM0JzeHZFWXZHYkI4VnlkaUFmcS9oWHB3MzBZY1ovcm1DYVM5cXNmbXU1dzc2Um5vRzFsTWpKM2NrUklUUGRBWVM0Z3JzY2UxUTByeStpYTRFTWRLNVQyY2QxWVpYM0UvZ3NHSEdid1pWaWN2dmFRb0xXZklKYVdyZTZ0czk1TWtucUducmRyZVkyYkUybkgwL3Jiekd0UndYVVloOVVpa2VoYmRIK0lNZUpzNnJSd3ZDaUZqcSszejhtUUJabjMvS0JLdmNVR3NXYTFFbUxDRkI0bzU5M0dtdFZtbVl1WTJiZlVCTktsNlFDUFhnYkR1THpOUlZUMVJvQXpwOEpaWG0zcTExZFRXTEROaWlEQnJrR1A3YzVTSnQyS3dGbjJDQVhQdHdZSy9Zbk5nemsxWndMV0tISWF5Y2tPbGczeVh0MHlidFZFNmpJcHVJM3NFODVMS1dWcDJwcFJkKzVDdUJqOXZ1cmVKaFRlMmwxODBFNEFQTWQ2Qi9yK2pMZkxIZjFBNGdvd3hNT2VvMngyM3FwRDNlSzQwRCtyTEdFVHpZelNLa0NraE9Db1VKSStEVGJTQVpCU3NTZ3Q3QThjQ3hwOSIsIml2IjoiekVveTl5amtsd1VFeEtENCIsInRhZyI6Ik52TEhhcjdGdjRRVUgvLzM5emVxbHc9PSIsImN0IjoiZThNVzRJaWlZMEZjSTNURjFSWT0ifQ=="
+          },
+          "password": {
+            "encrypted": true,
+            "value": "eyJ2IjoxLCJhbGciOiJSU0EtT0FFUC0yNTYrQTI1NkdDTSIsImsiOiJwQU01Mmp4NnBQTXF0NWZHV1ZjNGExU2Vob2w0ck55dm4xR1NlTWF0SGZzSVFLM3MzckhFOThncUpHQTkxY09wTjV4b0lmN1kySHE5ampJeFdqYmxuQVVaV2IwM3VkV2labXM4aFdXSWRmRVl5YW12SjZJYndMS253L1pJOUFaVFRjOVVPOFIwNlNvdUY0Q0JEay9DRE5Rdk5peFRpNlYrNWxYU1JrODFkWU9oZzNwQTk2QXdScm40OGcveE9qaU12dmhNSGFXcXJ5QXk5cjJFSTU0ZWp6S1FvZzJvaGhpS2Q3Mm9IeWlpYmp6bGJxZWZSNEhOTkY0Mjd6V1BlS255eEtQVW82OEtpMkVBalFIb3BETUxZenV0V1QvVXBHTDEydzlOS0FvSDI3ckdVcTYxWGZpWUFzbWhuL2lYTUMvTHBiVkpHdTlkbUtHSThmODB1YVcyUXY1eDhiSkhySlp6VlJQRDJ5eGtzamFwS01mSmpyMXo2UTVlMDBaMmt2dWdQUzFGV0xEd0hscDJsMmxHNXhVb1oxVzJvRFFTeDM0WEtSTG4yUjMwUVM2ODVjeEliS2pFb01reXIrTTFDWjNackVEL1ZQNWZjOXVZaDlhY25JRWdqMnAwR1JSNVRnR3FGRHhnVXdGNGJwVE1WSk4xMTVSR1FrRE0vbkR6a2duayIsIml2IjoiZzJPbGRJSUt0L0p6QU9hbSIsInRhZyI6InRwSGptTlFuYXNlSjVOM2NvRk1xQWc9PSIsImN0IjoiZTJ2cjJ3dFpVOGJmVDlPdyJ9"
+          },
+          "content_type": "application/json",
+          "payload": {},
+          "token_field_name": "token",
+          "credential_placement": "body",
+          "proxy_request_token_prefix": "raw"
+        }
+      }
+    ]
+  }
+]
