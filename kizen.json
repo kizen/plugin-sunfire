@@ -13,7 +13,8 @@
     "release_notes_directory": "releaseNotes/sunfire/",
     "config_template": {
       "partner_id": "",
-      "partner_app_id": ""
+      "partner_app_id": "",
+      "sunfire_env": "prod"
     },
     "developer_business_id": {
       "integration": "725f64e5-4124-46cc-92c4-d16049add76e",

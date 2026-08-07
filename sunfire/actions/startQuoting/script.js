@@ -7,7 +7,7 @@ const [contact, obj, employeePluginConfig] = await Promise.all([
   pluginId ? this.get(`/employee/mine/configs/plugins/${pluginId}`) : Promise.resolve(null),
 ]);
 const business = this.currentBusiness;
-const env = business.entitlements?.sunfire_env || "prod";
+const env = this.args.sunfire_env || "prod";
 const planType = "MAPD";
 const partnerAppId = this.args.partner_app_id || "sunfire";
 const baseUrl = env === "qa" ? "https://qa-sunfire.sunfirematrix.com" : "https://www.sunfirematrix.com";

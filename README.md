@@ -19,8 +19,7 @@ Each install of the plugin requires:
 | --- | --- |
 | `partner_id` | SunFire partner ID for the business |
 | `partner_app_id` | SunFire partner app ID (defaults to `sunfire` if not set) |
-
-The business's `sunfire_env` entitlement determines which SunFire environment (`qa` or `prod`) the plugin talks to; it defaults to `prod`.
+| `sunfire_env` | Which SunFire environment to target: `qa` or `prod` (defaults to `prod`) |
 
 ## Project structure
 
