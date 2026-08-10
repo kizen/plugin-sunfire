@@ -15,11 +15,15 @@ The plugin adds a **Start Quoting in SunFire** action to contact records. When t
 
 Each install of the plugin requires:
 
-| Field | Description |
-| --- | --- |
-| `partner_id` | SunFire partner ID for the business |
-| `partner_app_id` | SunFire partner app ID (defaults to `sunfire` if not set) |
-| `sunfire_env` | Which SunFire environment to target: `qa` or `prod` (defaults to `prod`) |
+| Field            | Description                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| `partner_id`     | SunFire partner ID for the business                                                       |
+| `partner_app_id` | SunFire partner app ID (defaults to `sunfire` if not set)                                 |
+| `crm_partner_id` | Required to send session data with quotes (Optional. Requires account setup from Sunfire) |
+
+Set `sunfire_env` business entitlement to `qa` for Sunfire's QA environment. Defaults to `prod` if missing.
+
+Contact record must contain `gender`, `birthday`, `medicare_number`, and `zipcode`.
 
 ## Project structure
 
