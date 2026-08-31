@@ -21,7 +21,7 @@ const buildDrugValues = (drugNames, drugDisplayNames) => {
     const qty = parts[1];
     const freq = parts[2];
     const label = drugDisplayNames[i]?.replace(/ \([^)]+\)$/, "");
-    return { ndc, name: label, qty: Number(qty) || 0, frequency: Number(freq) || 0 };
+    return { ndc, name: label, qty: Number(qty) || 0, frequency: (Number(freq) || 0) / 30 };
   });
 };
 

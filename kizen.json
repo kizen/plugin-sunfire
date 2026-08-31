@@ -1,13 +1,13 @@
 [
   {
     "name": "Sunfire",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "published": true,
     "api_name": "sunfire",
     "description": "Quote and apply with SunFire",
     "external_link": "https://www.sunfireinc.com/quoting-enrollment/",
-    "release_branches": ["main"],
-    "release_environments": ["dev", "fmo"],
+    "release_branches": ["KZN-18485-update-sunfire-to-divide-frequency-days-by-30"],
+    "release_environments": ["dev"],
     "entry": "sunfire/",
     "engine": "1.0.0",
     "release_notes_directory": "releaseNotes/sunfire/",
