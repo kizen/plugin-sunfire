@@ -21,7 +21,7 @@ const buildDrugValues = (drugNames, drugDisplayNames) => {
     const qty = parts[1];
     const freq = parts[2];
     const label = drugDisplayNames[i]?.replace(/ \([^)]+\)$/, "");
-    return { ndc, name: label, qty: Number(qty) || 0, frequency: (Number(freq) || 0) / 30 };
+    return { ndc, name: label, qty: Number(qty) || 0, frequency: Number(freq) || 0 };
   });
 };
 
@@ -79,9 +79,8 @@ const buildProspectBody = (contact, business, fields, { crmPartnerId, partnerApp
   return body;
 };
 
-const buildSessionBody = (planType, pharmacyNpis, providerNpis, drugValues, fields, contact) => {
+const buildSessionBody = (pharmacyNpis, providerNpis, drugValues, fields, contact) => {
   const body = {
-    planType,
     applicants: [{ type: "primary" }],
   };
 
@@ -330,7 +329,7 @@ const prospectPostBody = buildProspectBody(contact, business, fields, {
   partnerAppId,
   partnerId: this.args.partner_id,
 });
-const sessionPostBody = buildSessionBody(planType, pharmacyNpis, providerNpis, drugValues, fields, contact);
+const sessionPostBody = buildSessionBody(pharmacyNpis, providerNpis, drugValues, fields, contact);
 
 let failedImports = { drugs: [], doctors: [], pharmacy: null };
 
