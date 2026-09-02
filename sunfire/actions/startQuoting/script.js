@@ -79,9 +79,8 @@ const buildProspectBody = (contact, business, fields, { crmPartnerId, partnerApp
   return body;
 };
 
-const buildSessionBody = (planType, pharmacyNpis, providerNpis, drugValues, fields, contact) => {
+const buildSessionBody = (pharmacyNpis, providerNpis, drugValues, fields, contact) => {
   const body = {
-    planType,
     applicants: [{ type: "primary" }],
   };
 
@@ -330,7 +329,7 @@ const prospectPostBody = buildProspectBody(contact, business, fields, {
   partnerAppId,
   partnerId: this.args.partner_id,
 });
-const sessionPostBody = buildSessionBody(planType, pharmacyNpis, providerNpis, drugValues, fields, contact);
+const sessionPostBody = buildSessionBody(pharmacyNpis, providerNpis, drugValues, fields, contact);
 
 let failedImports = { drugs: [], doctors: [], pharmacy: null };
 
