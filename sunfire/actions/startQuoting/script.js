@@ -1,11 +1,19 @@
 this.setIndicator("button");
 
 const pluginId = this.args.pluginId;
-const [contact, obj, employeePluginConfig] = await Promise.all([
-  this.currentEntity(),
-  this.currentObject(),
-  pluginId ? this.get(`/employee/mine/configs/plugins/${pluginId}`) : Promise.resolve(null),
-]);
+let contact, obj, employeePluginConfig;
+try {
+  [contact, obj, employeePluginConfig] = await Promise.all([
+    this.currentEntity(),
+    this.currentObject(),
+    pluginId ? this.get(`/employee/mine/configs/plugins/${pluginId}`) : Promise.resolve(null),
+  ]);
+} catch (e) {
+  this.console.error("Failed to load record data:", e);
+  this.showToast("Unable to load record details. Please try again.", { variant: "failure" });
+  this.setIndicator("none");
+  return;
+}
 const business = this.currentBusiness;
 const env = this.args.sunfire_env || "prod";
 const planType = "MAPD";
