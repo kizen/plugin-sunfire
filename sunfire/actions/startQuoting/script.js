@@ -275,7 +275,8 @@ for (const fieldval of contact.fields) {
 
 // Session search
 const rawSessionNames = fields?.primary_for_saved_session_records?.name;
-const sessionNames = [].concat(rawSessionNames ?? []).filter((name) => !name.startsWith("CNX_"));
+// Ignore sessions for Connecture (CNX_*) and HealthSherpa (HS_*)
+const sessionNames = [].concat(rawSessionNames ?? []).filter((name) => !/^(CNX|HS)_/.test(name));
 const sessionNamesFilter = sessionNames.map((name) => ({
   type: "fields_v2",
   subtype: "non_custom",
