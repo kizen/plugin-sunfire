@@ -217,6 +217,7 @@ const fetchPartnerAuthToken = async (code) => {
   const clientPartnerId = partnerListResponse.find((p) => p.appId === partnerAppId)?.id;
 
   if (!clientPartnerId) {
+    // caught below and shown as a toast
     throw new Error("Failed to retrieve client partner ID from SunFire API");
   }
 
@@ -226,6 +227,7 @@ const fetchPartnerAuthToken = async (code) => {
   });
 
   if (!partnerTokenResponse || !partnerTokenResponse.token) {
+    // caught below and shown as a toast
     throw new Error("Failed to retrieve partner auth token from SunFire API");
   }
 
