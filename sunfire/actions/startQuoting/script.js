@@ -180,11 +180,12 @@ const promptForCrmConnectCode = async ({ defaultValue, errorMessage } = {}) => {
     return await promptForCrmConnectCode({ defaultValue, errorMessage });
   }
 
-  if (!result.canceled && result.values.crm_connect_code) {
-    return result.values.crm_connect_code;
+  // closed the prompt: caller continues without the partner auth token
+  if (result.canceled) {
+    return null;
   }
 
-  return null;
+  return result.values.crm_connect_code || (await promptForCrmConnectCode({ defaultValue, errorMessage }));
 };
 
 // no patch method for employee config, need to copy existing config and add code
@@ -320,11 +321,6 @@ let crmConnectCode = crmPartnerId ? employeePluginConfig?.config?.crm_connect_co
 
 if (crmPartnerId && !crmConnectCode) {
   crmConnectCode = await promptForCrmConnectCode();
-  if (!crmConnectCode) {
-    this.showToast("CRM Connect Code is required to proceed", { variant: "failure" });
-    this.setIndicator("none");
-    return;
-  }
 }
 
 let partnerAuthToken = null;
@@ -338,17 +334,21 @@ try {
       errorMessage:
         "We couldn't verify your CRM connect code with SunFire. Please check the code or generate a new one.",
     });
-    if (!crmConnectCode) {
-      this.showToast("A valid CRM Connect Code is required to proceed", { variant: "failure" });
-      this.setIndicator("none");
-      return;
+    if (crmConnectCode) {
+      partnerAuthToken = await fetchPartnerAuthToken(crmConnectCode);
     }
-    partnerAuthToken = await fetchPartnerAuthToken(crmConnectCode);
   }
 } catch (e) {
   this.showToast(e.message, { variant: "failure" });
   this.setIndicator("none");
   return;
+}
+
+if (crmPartnerId && !partnerAuthToken) {
+  this.showToast(
+    "No CRM connect code provided. Drugs, providers, and pharmacies will not be sent to SunFire with this quote.",
+    { variant: "alert", autohide: false },
+  );
 }
 
 // only persist the code once SunFire has accepted it
