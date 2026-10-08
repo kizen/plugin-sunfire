@@ -200,7 +200,7 @@ const saveCrmConnectCode = (code) =>
   });
 
 const fetchPartnerAuthToken = async (code) => {
-  const partnerListResponse = await this.post(
+  const [partnerListResponse, partnerListError] = await this.postWithErrors(
     this.getServiceUrl(`auth_${env}`, "/crm/partner/list"),
     { token: code },
     {
@@ -212,7 +212,7 @@ const fetchPartnerAuthToken = async (code) => {
   ).catch(() => null);
 
   // a failed partner list lookup means the CRM connect code is bad; return null so the caller can re-prompt
-  if (!Array.isArray(partnerListResponse)) {
+  if (!Array.isArray(partnerListResponse) || partnerListError) {
     return null;
   }
 
@@ -338,7 +338,8 @@ try {
   while (crmConnectCode && !partnerAuthToken) {
     crmConnectCode = await promptForCrmConnectCode({
       defaultValue: crmConnectCode,
-      errorMessage: "We couldn't verify your CRM connect code with SunFire. Please check the code or generate a new one.",
+      errorMessage:
+        "We couldn't verify your CRM connect code with SunFire. Please check the code or generate a new one.",
     });
     if (!crmConnectCode) {
       this.showToast("A valid CRM Connect Code is required to proceed", { variant: "failure" });
