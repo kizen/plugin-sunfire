@@ -323,16 +323,40 @@ const crmPartnerId = this.args.crm_partner_id;
 
 if (!crmConnectCode && crmPartnerId) {
   crmConnectCode = await promptForCrmConnectCode();
-  if (crmConnectCode) {
-    await saveCrmConnectCode(crmConnectCode);
-  } else {
+  if (!crmConnectCode) {
     this.showToast("CRM Connect Code is required to proceed", { variant: "failure" });
     this.setIndicator("none");
     return;
   }
 }
 
-const authPromise = crmConnectCode ? fetchPartnerAuthToken(crmConnectCode) : Promise.resolve(null);
+let partnerAuthToken = null;
+try {
+  partnerAuthToken = crmConnectCode ? await fetchPartnerAuthToken(crmConnectCode) : null;
+
+  // bad connect code: re-prompt with the previous value prefilled until it works or the user gives up
+  while (crmConnectCode && !partnerAuthToken) {
+    crmConnectCode = await promptForCrmConnectCode({
+      defaultValue: crmConnectCode,
+      errorMessage: "We couldn't verify your CRM connect code with SunFire. Please check the code or generate a new one.",
+    });
+    if (!crmConnectCode) {
+      this.showToast("A valid CRM Connect Code is required to proceed", { variant: "failure" });
+      this.setIndicator("none");
+      return;
+    }
+    partnerAuthToken = await fetchPartnerAuthToken(crmConnectCode);
+  }
+} catch (e) {
+  this.showToast(e.message, { variant: "failure" });
+  this.setIndicator("none");
+  return;
+}
+
+// only persist the code once SunFire has accepted it
+if (crmConnectCode && crmConnectCode !== employeePluginConfig?.config?.crm_connect_code) {
+  await saveCrmConnectCode(crmConnectCode);
+}
 
 // ─── Sync Prep ───────────────────────────────────────────────────────────────
 
@@ -405,30 +429,6 @@ if (sessionPromptResponse.canceled && sessionPromptResponse.eventSource === "clo
 let customer_code = null;
 if (!sessionPromptResponse.canceled && sessionPromptResponse.values.session_id) {
   customer_code = sessionPromptResponse.values.session_id.value;
-}
-
-let partnerAuthToken = null;
-try {
-  partnerAuthToken = await authPromise;
-
-  // bad connect code: re-prompt with the previous value prefilled until it works or the user gives up
-  while (crmConnectCode && !partnerAuthToken) {
-    crmConnectCode = await promptForCrmConnectCode({
-      defaultValue: crmConnectCode,
-      errorMessage: "We couldn't verify your CRM connect code with SunFire. Please check the code or generate a new one.",
-    });
-    if (!crmConnectCode) {
-      this.showToast("A valid CRM Connect Code is required to proceed", { variant: "failure" });
-      this.setIndicator("none");
-      return;
-    }
-    partnerAuthToken = await fetchPartnerAuthToken(crmConnectCode);
-    if (partnerAuthToken) await saveCrmConnectCode(crmConnectCode);
-  }
-} catch (e) {
-  this.showToast(e.message, { variant: "failure" });
-  this.setIndicator("none");
-  return;
 }
 
 const providerRecords = await providerRecordsPromise;
