@@ -314,11 +314,11 @@ const providerRecordsPromise =
     ? Promise.all(providerEntityIds.map((id) => this.getEntity(providersField.relation.related_object, id)))
     : Promise.resolve([]);
 
-// Auth (requires CRM connect code — prompt user if not yet saved)
-let crmConnectCode = employeePluginConfig?.config?.crm_connect_code;
+// Auth (only for CRM partners; requires CRM connect code — prompt user if not yet saved)
 const crmPartnerId = this.args.crm_partner_id;
+let crmConnectCode = crmPartnerId ? employeePluginConfig?.config?.crm_connect_code : null;
 
-if (!crmConnectCode && crmPartnerId) {
+if (crmPartnerId && !crmConnectCode) {
   crmConnectCode = await promptForCrmConnectCode();
   if (!crmConnectCode) {
     this.showToast("CRM Connect Code is required to proceed", { variant: "failure" });
