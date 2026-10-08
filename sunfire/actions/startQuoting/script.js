@@ -132,14 +132,11 @@ const promptForCrmConnectCode = async ({ defaultValue, errorMessage } = {}) => {
       variant: "text",
     },
     content: [
-      errorMessage && {
-        type: "description",
-        content: errorMessage,
-        widthPercent: 100,
-      },
       {
         type: "description",
-        content: "Please enter your CRM connect code. This is required to sync provider, drugs, and pharmacy data.",
+        content:
+          errorMessage ||
+          "Please enter your CRM connect code. This is required to sync provider, drugs, and pharmacy data.",
         widthPercent: 100,
       },
       {
@@ -175,7 +172,7 @@ const promptForCrmConnectCode = async ({ defaultValue, errorMessage } = {}) => {
         id: "crm_connect_code",
         defaultValue,
       },
-    ].filter(Boolean),
+    ],
   });
 
   if (result.canceled && result.eventSource === "button") {
