@@ -207,7 +207,7 @@ const fetchPartnerAuthToken = async (code) => {
         Accept: "application/json",
       },
     },
-  ).catch(() => null);
+  );
 
   // a failed partner list lookup means the CRM connect code is bad; return null so the caller can re-prompt
   if (!Array.isArray(partnerListResponse) || partnerListError) {
