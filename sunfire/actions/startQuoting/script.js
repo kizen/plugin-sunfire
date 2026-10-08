@@ -120,9 +120,9 @@ const buildSessionBody = (pharmacyNpis, providerNpis, drugValues, fields, contac
 };
 
 // recursive function for prompt so window stays open when navigating to sunfire profile
-const promptForCrmConnectCode = async () => {
+const promptForCrmConnectCode = async ({ defaultValue, errorMessage } = {}) => {
   const result = await this.prompt({
-    title: "Missing CRM Connect Code",
+    title: errorMessage ? "Invalid CRM Connect Code" : "Missing CRM Connect Code",
     confirmButton: {
       label: "Save",
       variant: "standard",
@@ -132,6 +132,11 @@ const promptForCrmConnectCode = async () => {
       variant: "text",
     },
     content: [
+      errorMessage && {
+        type: "description",
+        content: errorMessage,
+        widthPercent: 100,
+      },
       {
         type: "description",
         content: "Please enter your CRM connect code. This is required to sync provider, drugs, and pharmacy data.",
@@ -168,13 +173,14 @@ const promptForCrmConnectCode = async () => {
         label: "Enter your CRM connect code",
         placeholder: "CRM Connect Code",
         id: "crm_connect_code",
+        defaultValue,
       },
-    ],
+    ].filter(Boolean),
   });
 
   if (result.canceled && result.eventSource === "button") {
     await this.openWindow(`${baseUrl}/app/agent/${partnerAppId}/#/agentprofile`);
-    return await promptForCrmConnectCode();
+    return await promptForCrmConnectCode({ defaultValue, errorMessage });
   }
 
   if (!result.canceled && result.values.crm_connect_code) {
@@ -182,6 +188,50 @@ const promptForCrmConnectCode = async () => {
   }
 
   return null;
+};
+
+// no patch method for employee config, need to copy existing config and add code
+const saveCrmConnectCode = (code) =>
+  this.post(`/employee/mine/configs/plugins/${pluginId}`, {
+    config: {
+      ...(employeePluginConfig?.config ?? {}),
+      crm_connect_code: code,
+    },
+  });
+
+const fetchPartnerAuthToken = async (code) => {
+  const partnerListResponse = await this.post(
+    this.getServiceUrl(`auth_${env}`, "/crm/partner/list"),
+    { token: code },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    },
+  ).catch(() => null);
+
+  // a failed partner list lookup means the CRM connect code is bad; return null so the caller can re-prompt
+  if (!Array.isArray(partnerListResponse)) {
+    return null;
+  }
+
+  const clientPartnerId = partnerListResponse.find((p) => p.appId === partnerAppId)?.id;
+
+  if (!clientPartnerId) {
+    throw new Error("Failed to retrieve client partner ID from SunFire API");
+  }
+
+  const partnerTokenResponse = await this.post(this.getServiceUrl(`auth_${env}`, "/crm/partner/token/load"), {
+    type: "authToken",
+    clientPartnerId,
+  });
+
+  if (!partnerTokenResponse || !partnerTokenResponse.token) {
+    throw new Error("Failed to retrieve partner auth token from SunFire API");
+  }
+
+  return partnerTokenResponse.token;
 };
 
 // ─── Field Processing ────────────────────────────────────────────────────────
@@ -274,13 +324,7 @@ const crmPartnerId = this.args.crm_partner_id;
 if (!crmConnectCode && crmPartnerId) {
   crmConnectCode = await promptForCrmConnectCode();
   if (crmConnectCode) {
-    // no patch method for employee config, need to copy existing config and add code
-    await this.post(`/employee/mine/configs/plugins/${pluginId}`, {
-      config: {
-        ...(employeePluginConfig?.config ?? {}),
-        crm_connect_code: crmConnectCode,
-      },
-    });
+    await saveCrmConnectCode(crmConnectCode);
   } else {
     this.showToast("CRM Connect Code is required to proceed", { variant: "failure" });
     this.setIndicator("none");
@@ -288,41 +332,7 @@ if (!crmConnectCode && crmPartnerId) {
   }
 }
 
-const authPromise = crmConnectCode
-  ? (async () => {
-      const partnerListResponse = await this.post(
-        this.getServiceUrl(`auth_${env}`, "/crm/partner/list"),
-        { token: crmConnectCode },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-        },
-      );
-
-      if (!partnerListResponse || !Array.isArray(partnerListResponse)) {
-        throw new Error("Failed to retrieve partner list from SunFire API");
-      }
-
-      const clientPartnerId = partnerListResponse.find((p) => p.appId === partnerAppId)?.id;
-
-      if (!clientPartnerId) {
-        throw new Error("Failed to retrieve client partner ID from SunFire API");
-      }
-
-      const partnerTokenResponse = await this.post(this.getServiceUrl(`auth_${env}`, "/crm/partner/token/load"), {
-        type: "authToken",
-        clientPartnerId,
-      });
-
-      if (!partnerTokenResponse || !partnerTokenResponse.token) {
-        throw new Error("Failed to retrieve partner auth token from SunFire API");
-      }
-
-      return partnerTokenResponse.token;
-    })()
-  : Promise.resolve(null);
+const authPromise = crmConnectCode ? fetchPartnerAuthToken(crmConnectCode) : Promise.resolve(null);
 
 // ─── Sync Prep ───────────────────────────────────────────────────────────────
 
@@ -400,8 +410,24 @@ if (!sessionPromptResponse.canceled && sessionPromptResponse.values.session_id) 
 let partnerAuthToken = null;
 try {
   partnerAuthToken = await authPromise;
+
+  // bad connect code: re-prompt with the previous value prefilled until it works or the user gives up
+  while (crmConnectCode && !partnerAuthToken) {
+    crmConnectCode = await promptForCrmConnectCode({
+      defaultValue: crmConnectCode,
+      errorMessage: "We couldn't verify your CRM connect code with SunFire. Please check the code or generate a new one.",
+    });
+    if (!crmConnectCode) {
+      this.showToast("A valid CRM Connect Code is required to proceed", { variant: "failure" });
+      this.setIndicator("none");
+      return;
+    }
+    partnerAuthToken = await fetchPartnerAuthToken(crmConnectCode);
+    if (partnerAuthToken) await saveCrmConnectCode(crmConnectCode);
+  }
 } catch (e) {
   this.showToast(e.message, { variant: "failure" });
+  this.setIndicator("none");
   return;
 }
 
