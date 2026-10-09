@@ -120,9 +120,9 @@ const buildSessionBody = (pharmacyNpis, providerNpis, drugValues, fields, contac
 };
 
 // recursive function for prompt so window stays open when navigating to sunfire profile
-const promptForCrmConnectCode = async () => {
+const promptForCrmConnectCode = async ({ defaultValue, errorMessage } = {}) => {
   const result = await this.prompt({
-    title: "Missing CRM Connect Code",
+    title: errorMessage ? "Invalid CRM Connect Code" : "Missing CRM Connect Code",
     confirmButton: {
       label: "Save",
       variant: "standard",
@@ -134,7 +134,9 @@ const promptForCrmConnectCode = async () => {
     content: [
       {
         type: "description",
-        content: "Please enter your CRM connect code. This is required to sync provider, drugs, and pharmacy data.",
+        content:
+          errorMessage ||
+          "Please enter your CRM connect code. This is required to sync provider, drugs, and pharmacy data.",
         widthPercent: 100,
       },
       {
@@ -168,20 +170,68 @@ const promptForCrmConnectCode = async () => {
         label: "Enter your CRM connect code",
         placeholder: "CRM Connect Code",
         id: "crm_connect_code",
+        defaultValue,
       },
     ],
   });
 
   if (result.canceled && result.eventSource === "button") {
     await this.openWindow(`${baseUrl}/app/agent/${partnerAppId}/#/agentprofile`);
-    return await promptForCrmConnectCode();
+    return await promptForCrmConnectCode({ defaultValue, errorMessage });
   }
 
-  if (!result.canceled && result.values.crm_connect_code) {
-    return result.values.crm_connect_code;
+  // closed the prompt: caller continues without the partner auth token
+  if (result.canceled) {
+    return null;
   }
 
-  return null;
+  return result.values.crm_connect_code || (await promptForCrmConnectCode({ defaultValue, errorMessage }));
+};
+
+// no patch method for employee config, need to copy existing config and add code
+const saveCrmConnectCode = (code) =>
+  this.post(`/employee/mine/configs/plugins/${pluginId}`, {
+    config: {
+      ...(employeePluginConfig?.config ?? {}),
+      crm_connect_code: code,
+    },
+  });
+
+const fetchPartnerAuthToken = async (code) => {
+  const [partnerListResponse, partnerListError] = await this.postWithErrors(
+    this.getServiceUrl(`auth_${env}`, "/crm/partner/list"),
+    { token: code },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    },
+  );
+
+  // a failed partner list lookup means the CRM connect code is bad; return null so the caller can re-prompt
+  if (!Array.isArray(partnerListResponse) || partnerListError) {
+    return null;
+  }
+
+  const clientPartnerId = partnerListResponse.find((p) => p.appId === partnerAppId)?.id;
+
+  if (!clientPartnerId) {
+    // caught below and shown as a toast
+    throw new Error("Failed to retrieve client partner ID from SunFire API");
+  }
+
+  const partnerTokenResponse = await this.post(this.getServiceUrl(`auth_${env}`, "/crm/partner/token/load"), {
+    type: "authToken",
+    clientPartnerId,
+  });
+
+  if (!partnerTokenResponse || !partnerTokenResponse.token) {
+    // caught below and shown as a toast
+    throw new Error("Failed to retrieve partner auth token from SunFire API");
+  }
+
+  return partnerTokenResponse.token;
 };
 
 // ─── Field Processing ────────────────────────────────────────────────────────
@@ -227,7 +277,8 @@ for (const fieldval of contact.fields) {
 
 // Session search
 const rawSessionNames = fields?.primary_for_saved_session_records?.name;
-const sessionNames = [].concat(rawSessionNames ?? []).filter((name) => !name.startsWith("CNX_"));
+// Ignore sessions for Connecture (CNX_*) and HealthSherpa (HS_*)
+const sessionNames = [].concat(rawSessionNames ?? []).filter((name) => !/^(CNX|HS)_/.test(name));
 const sessionNamesFilter = sessionNames.map((name) => ({
   type: "fields_v2",
   subtype: "non_custom",
@@ -267,62 +318,46 @@ const providerRecordsPromise =
     ? Promise.all(providerEntityIds.map((id) => this.getEntity(providersField.relation.related_object, id)))
     : Promise.resolve([]);
 
-// Auth (requires CRM connect code — prompt user if not yet saved)
-let crmConnectCode = employeePluginConfig?.config?.crm_connect_code;
+// Auth (only for CRM partners; requires CRM connect code — prompt user if not yet saved)
 const crmPartnerId = this.args.crm_partner_id;
+let crmConnectCode = crmPartnerId ? employeePluginConfig?.config?.crm_connect_code : null;
 
-if (!crmConnectCode && crmPartnerId) {
+if (crmPartnerId && !crmConnectCode) {
   crmConnectCode = await promptForCrmConnectCode();
-  if (crmConnectCode) {
-    // no patch method for employee config, need to copy existing config and add code
-    await this.post(`/employee/mine/configs/plugins/${pluginId}`, {
-      config: {
-        ...(employeePluginConfig?.config ?? {}),
-        crm_connect_code: crmConnectCode,
-      },
-    });
-  } else {
-    this.showToast("CRM Connect Code is required to proceed", { variant: "failure" });
-    this.setIndicator("none");
-    return;
-  }
 }
 
-const authPromise = crmConnectCode
-  ? (async () => {
-      const partnerListResponse = await this.post(
-        this.getServiceUrl(`auth_${env}`, "/crm/partner/list"),
-        { token: crmConnectCode },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-        },
-      );
+let partnerAuthToken = null;
+try {
+  partnerAuthToken = crmConnectCode ? await fetchPartnerAuthToken(crmConnectCode) : null;
 
-      if (!partnerListResponse || !Array.isArray(partnerListResponse)) {
-        throw new Error("Failed to retrieve partner list from SunFire API");
-      }
+  // bad connect code: re-prompt with the previous value prefilled until it works or the user gives up
+  while (crmConnectCode && !partnerAuthToken) {
+    crmConnectCode = await promptForCrmConnectCode({
+      defaultValue: crmConnectCode,
+      errorMessage:
+        "We couldn't verify your CRM connect code with SunFire. Please check the code or generate a new one.",
+    });
+    if (crmConnectCode) {
+      partnerAuthToken = await fetchPartnerAuthToken(crmConnectCode);
+    }
+  }
+} catch (e) {
+  this.showToast(e.message, { variant: "failure" });
+  this.setIndicator("none");
+  return;
+}
 
-      const clientPartnerId = partnerListResponse.find((p) => p.appId === partnerAppId)?.id;
+if (crmPartnerId && !partnerAuthToken) {
+  this.showToast(
+    "No CRM connect code provided. Drugs, providers, and pharmacies will not be sent to SunFire with this quote.",
+    { variant: "alert", autohide: false },
+  );
+}
 
-      if (!clientPartnerId) {
-        throw new Error("Failed to retrieve client partner ID from SunFire API");
-      }
-
-      const partnerTokenResponse = await this.post(this.getServiceUrl(`auth_${env}`, "/crm/partner/token/load"), {
-        type: "authToken",
-        clientPartnerId,
-      });
-
-      if (!partnerTokenResponse || !partnerTokenResponse.token) {
-        throw new Error("Failed to retrieve partner auth token from SunFire API");
-      }
-
-      return partnerTokenResponse.token;
-    })()
-  : Promise.resolve(null);
+// only persist the code once SunFire has accepted it
+if (crmConnectCode && crmConnectCode !== employeePluginConfig?.config?.crm_connect_code) {
+  await saveCrmConnectCode(crmConnectCode);
+}
 
 // ─── Sync Prep ───────────────────────────────────────────────────────────────
 
@@ -395,14 +430,6 @@ if (sessionPromptResponse.canceled && sessionPromptResponse.eventSource === "clo
 let customer_code = null;
 if (!sessionPromptResponse.canceled && sessionPromptResponse.values.session_id) {
   customer_code = sessionPromptResponse.values.session_id.value;
-}
-
-let partnerAuthToken = null;
-try {
-  partnerAuthToken = await authPromise;
-} catch (e) {
-  this.showToast(e.message, { variant: "failure" });
-  return;
 }
 
 const providerRecords = await providerRecordsPromise;
