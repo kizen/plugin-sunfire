@@ -119,6 +119,18 @@ const buildSessionBody = (pharmacyNpis, providerNpis, drugValues, fields, contac
   return body;
 };
 
+// race a [data, error] request against a timeout; timeout resolves as [null, { timedOut: true }]
+const withTimeout = (request, ms = 7000) =>
+  Promise.race([request, new Promise((resolve) => setTimeout(() => resolve([null, { timedOut: true }]), ms))]);
+
+// e.g. 422: "doctors[1].id" must be a number
+// the engine unwraps the proxy envelope: SunFire's status is upstreamStatus and its body is upstreamResponse
+const describeError = (error) => {
+  const status = error?.upstreamStatus ?? error?.proxyStatus;
+  const message = error?.upstreamResponse?.message ?? error?.message;
+  return [status, message].filter(Boolean).join(": ");
+};
+
 // recursive function for prompt so window stays open when navigating to sunfire profile
 const promptForCrmConnectCode = async ({ defaultValue, errorMessage } = {}) => {
   const result = await this.prompt({
@@ -436,19 +448,32 @@ const providerRecords = await providerRecordsPromise;
 const providerZipByNpi = buildProviderZipByNpi(providerRecords);
 
 // If user selected an existing session, we can skip session creation and just open the URL with the existing customer code. Only create a new session if selected "Create New Session".
+let createdSession = null;
 if (partnerAuthToken && !customer_code) {
-  const sessionResponseData = await Promise.race([
-    this.post(this.getServiceUrl(`api_${env}`, "/v2/session/external/convert"), sessionPostBody, {
+  const [sessionData, sessionError] = await withTimeout(
+    this.postWithErrors(this.getServiceUrl(`api_${env}`, "/v2/session/external/convert"), sessionPostBody, {
       headers: {
         "X-Proxy-Authorization": partnerAuthToken,
       },
     }),
-    new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ error: true });
-      }, 7000);
-    }),
-  ]);
+  );
+
+  // TEMP DEBUG: verify KizenRequestError shape from the proxy (remove before release)
+  this.console.log("[SunFire debug] session data:", sessionData);
+  this.console.log("[SunFire debug] session error message:", sessionError?.message);
+  this.console.log("[SunFire debug] session error proxyStatus:", sessionError?.proxyStatus);
+  this.console.log("[SunFire debug] session error upstreamStatus:", sessionError?.upstreamStatus);
+  this.console.log("[SunFire debug] session error upstreamResponse:", sessionError?.upstreamResponse);
+  this.console.log("[SunFire debug] session error keys:", sessionError ? Object.keys(sessionError) : null);
+  this.console.log("[SunFire debug] session describeError:", sessionError ? describeError(sessionError) : null);
+
+  if (sessionError?.timedOut) {
+    this.setIndicator("none");
+    this.showToast("Request to SunFire timed out.", { variant: "failure" });
+    return;
+  }
+
+  const sessionResponseData = sessionData;
 
   if (sessionResponseData && sessionResponseData.errors) {
     if (sessionResponseData.errors.drugs) {
@@ -462,18 +487,25 @@ if (partnerAuthToken && !customer_code) {
     }
   }
 
-  if (sessionResponseData.error) {
-    this.setIndicator("none");
-    this.showToast("Request to SunFire timed out.", { variant: "failure" });
-    return;
+  if (sessionResponseData?.session?.customerCode) {
+    createdSession = sessionResponseData.session;
+    customer_code = createdSession.customerCode;
+  } else {
+    // session rejected (e.g. 422 for invalid data): show SunFire's reason and continue quoting without session data
+    this.console.error("SunFire session convert failed:", sessionError, sessionResponseData);
+    this.showToast(
+      `SunFire couldn't create a session${sessionError ? ` (${describeError(sessionError)})` : ""}. Drugs, providers, and pharmacies will not be sent to SunFire with this quote.`,
+      { variant: "alert", autohide: false },
+    );
   }
+}
 
-  customer_code = sessionResponseData.session.customerCode;
-
-  if (sessionResponseData.session?.doctors?.length > 0 && Object.keys(providerZipByNpi).length > 0) {
+// Post-process a newly created session: dedupe doctor addresses and save the session record
+if (createdSession) {
+  if (createdSession.doctors?.length > 0 && Object.keys(providerZipByNpi).length > 0) {
     // SF returns all provider addresses per NPI, filter to just the one that matches kizen provider record zip.
     // Remove all others through session update. Default to first if no zips match.
-    const sessionDoctors = sessionResponseData.session.doctors;
+    const sessionDoctors = createdSession.doctors;
 
     const npiGroups = sessionDoctors.reduce((acc, doc, idx) => {
       if (!acc[doc.npi]) acc[doc.npi] = [];
@@ -642,20 +674,37 @@ const promptResponseData = await this.prompt({
 if (promptResponseData.canceled) {
   this.setIndicator("none");
 } else {
-  const prospectResponseData = await Promise.race([
-    this.post(this.getServiceUrl(`api_${env}`, "/api/prospect"), prospectPostBody, {
+  const [prospectResponseData, prospectError] = await withTimeout(
+    this.postWithErrors(this.getServiceUrl(`api_${env}`, "/api/prospect"), prospectPostBody, {
       headers: {
         "Content-Type": "application/json",
       },
     }),
-    new Promise((resolve) => {
-      setTimeout(() => resolve({ error: true }), 7000);
-    }),
-  ]);
+  );
 
-  if (prospectResponseData.error) {
+  // TEMP DEBUG: verify KizenRequestError shape from the proxy (remove before release)
+  this.console.log("[SunFire debug] prospect data:", prospectResponseData);
+  this.console.log("[SunFire debug] prospect error message:", prospectError?.message);
+  this.console.log("[SunFire debug] prospect error proxyStatus:", prospectError?.proxyStatus);
+  this.console.log("[SunFire debug] prospect error upstreamStatus:", prospectError?.upstreamStatus);
+  this.console.log("[SunFire debug] prospect error upstreamResponse:", prospectError?.upstreamResponse);
+  this.console.log("[SunFire debug] prospect error keys:", prospectError ? Object.keys(prospectError) : null);
+  this.console.log("[SunFire debug] prospect describeError:", prospectError ? describeError(prospectError) : null);
+
+  if (prospectError?.timedOut) {
     this.setIndicator("none");
-    throw new Error("Request to Sunfire timed out");
+    this.showToast("Request to SunFire timed out.", { variant: "failure" });
+    return;
+  }
+
+  if (prospectError || !prospectResponseData?.url) {
+    this.console.error("SunFire prospect failed:", prospectError, prospectError?.upstreamResponse);
+    this.setIndicator("none");
+    this.showToast(`Failed to create SunFire prospect${prospectError ? ` (${describeError(prospectError)})` : ""}.`, {
+      variant: "failure",
+      autohide: false,
+    });
+    return;
   }
 
   let url = prospectResponseData.url;
