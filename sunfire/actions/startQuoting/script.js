@@ -458,15 +458,6 @@ if (partnerAuthToken && !customer_code) {
     }),
   );
 
-  // TEMP DEBUG: verify KizenRequestError shape from the proxy (remove before release)
-  this.console.log("[SunFire debug] session data:", sessionData);
-  this.console.log("[SunFire debug] session error message:", sessionError?.message);
-  this.console.log("[SunFire debug] session error proxyStatus:", sessionError?.proxyStatus);
-  this.console.log("[SunFire debug] session error upstreamStatus:", sessionError?.upstreamStatus);
-  this.console.log("[SunFire debug] session error upstreamResponse:", sessionError?.upstreamResponse);
-  this.console.log("[SunFire debug] session error keys:", sessionError ? Object.keys(sessionError) : null);
-  this.console.log("[SunFire debug] session describeError:", sessionError ? describeError(sessionError) : null);
-
   if (sessionError?.timedOut) {
     this.setIndicator("none");
     this.showToast("Request to SunFire timed out.", { variant: "failure" });
@@ -681,15 +672,6 @@ if (promptResponseData.canceled) {
       },
     }),
   );
-
-  // TEMP DEBUG: verify KizenRequestError shape from the proxy (remove before release)
-  this.console.log("[SunFire debug] prospect data:", prospectResponseData);
-  this.console.log("[SunFire debug] prospect error message:", prospectError?.message);
-  this.console.log("[SunFire debug] prospect error proxyStatus:", prospectError?.proxyStatus);
-  this.console.log("[SunFire debug] prospect error upstreamStatus:", prospectError?.upstreamStatus);
-  this.console.log("[SunFire debug] prospect error upstreamResponse:", prospectError?.upstreamResponse);
-  this.console.log("[SunFire debug] prospect error keys:", prospectError ? Object.keys(prospectError) : null);
-  this.console.log("[SunFire debug] prospect describeError:", prospectError ? describeError(prospectError) : null);
 
   if (prospectError?.timedOut) {
     this.setIndicator("none");
