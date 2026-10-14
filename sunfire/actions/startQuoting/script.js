@@ -454,7 +454,7 @@ if (partnerAuthToken && !customer_code) {
     new Promise((resolve) => {
       setTimeout(() => {
         resolve([null, { timedOut: true }]);
-      }, 7000);
+      }, 30000);
     }),
   ]);
 
@@ -669,7 +669,7 @@ if (promptResponseData.canceled) {
       },
     }),
     new Promise((resolve) => {
-      setTimeout(() => resolve([null, { timedOut: true }]), 7000);
+      setTimeout(() => resolve([null, { timedOut: true }]), 30000);
     }),
   ]);
 
