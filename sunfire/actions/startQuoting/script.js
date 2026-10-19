@@ -412,6 +412,7 @@ const sessionPromptContent = [
     id: "session_id",
     label: "Select SunFire Session",
     options: sessionOptions,
+    defaultValue: sessionOptions?.[0]?.value,
   },
 ];
 
