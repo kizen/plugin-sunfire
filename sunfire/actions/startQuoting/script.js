@@ -295,27 +295,31 @@ const sessionNamesFilter = sessionNames.map((name) => ({
 }));
 const ninetyDaysAgo = new Date();
 ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-const sessionSearchPromise = this.post("/records/sunfire_saved_sessions/search?ordering=-updated", {
-  query: [
-    {
-      and: true,
-      filters: [
-        {
-          type: "fields_v2",
-          subtype: "non_custom",
-          field: "created",
-          condition: ">=",
-          value: ninetyDaysAgo.toISOString(),
-        },
-      ],
-    },
-    sessionNamesFilter.length > 0 && {
-      and: false,
-      filters: sessionNamesFilter,
-    },
-  ].filter(Boolean),
-  and: true,
-});
+// only this contact's sessions; skip the search when the contact has none
+const sessionSearchPromise =
+  sessionNamesFilter.length > 0
+    ? this.post("/records/sunfire_saved_sessions/search?ordering=-updated", {
+        query: [
+          {
+            and: true,
+            filters: [
+              {
+                type: "fields_v2",
+                subtype: "non_custom",
+                field: "created",
+                condition: ">=",
+                value: ninetyDaysAgo.toISOString(),
+              },
+            ],
+          },
+          {
+            and: false,
+            filters: sessionNamesFilter,
+          },
+        ],
+        and: true,
+      })
+    : Promise.resolve({ results: [] });
 
 // Provider records
 const providersField = obj.fields.find((f) => f.name === "providers");
