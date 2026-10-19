@@ -391,7 +391,7 @@ let failedImports = { drugs: [], doctors: [], pharmacy: null };
 
 const sessionIdResponse = await sessionSearchPromise;
 
-const sessionOptions = sessionIdResponse?.results.map((record) => {
+const sessionOptions = (sessionIdResponse?.results ?? []).map((record) => {
   const sessionName = Object.values(record.fields).find((f) => f.name === "name")?.value;
   const sessionUpdated = Object.values(record.fields).find((f) => f.name === "updated")?.value;
   return {
@@ -416,32 +416,35 @@ const sessionPromptContent = [
     id: "session_id",
     label: "Select SunFire Session",
     options: sessionOptions,
-    defaultValue: sessionOptions?.[0]?.value,
+    defaultValue: sessionOptions[0]?.value,
   },
 ];
 
-const sessionPromptResponse = await this.prompt({
-  title: "Select SunFire Session",
-  confirmButton: {
-    label: "Continue",
-    variant: "standard",
-    color: "primary",
-  },
-  cancelButton: {
-    label: "Create New Session",
-    variant: "text",
-    color: "secondary",
-  },
-  content: sessionPromptContent,
-});
-
-if (sessionPromptResponse.canceled && sessionPromptResponse.eventSource === "close") {
-  this.setIndicator("none");
-  return;
-}
+// no saved sessions: skip the prompt and create a new one
 let customer_code = null;
-if (!sessionPromptResponse.canceled && sessionPromptResponse.values.session_id) {
-  customer_code = sessionPromptResponse.values.session_id.value;
+if (sessionOptions.length > 0) {
+  const sessionPromptResponse = await this.prompt({
+    title: "Select SunFire Session",
+    confirmButton: {
+      label: "Continue",
+      variant: "standard",
+      color: "primary",
+    },
+    cancelButton: {
+      label: "Create New Session",
+      variant: "text",
+      color: "secondary",
+    },
+    content: sessionPromptContent,
+  });
+
+  if (sessionPromptResponse.canceled && sessionPromptResponse.eventSource === "close") {
+    this.setIndicator("none");
+    return;
+  }
+  if (!sessionPromptResponse.canceled && sessionPromptResponse.values.session_id) {
+    customer_code = sessionPromptResponse.values.session_id.value;
+  }
 }
 
 const providerRecords = await providerRecordsPromise;
