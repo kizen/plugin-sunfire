@@ -295,27 +295,31 @@ const sessionNamesFilter = sessionNames.map((name) => ({
 }));
 const ninetyDaysAgo = new Date();
 ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-const sessionSearchPromise = this.post("/records/sunfire_saved_sessions/search?ordering=-updated", {
-  query: [
-    {
-      and: true,
-      filters: [
-        {
-          type: "fields_v2",
-          subtype: "non_custom",
-          field: "created",
-          condition: ">=",
-          value: ninetyDaysAgo.toISOString(),
-        },
-      ],
-    },
-    sessionNamesFilter.length > 0 && {
-      and: false,
-      filters: sessionNamesFilter,
-    },
-  ].filter(Boolean),
-  and: true,
-});
+// only this contact's sessions; skip the search when the contact has none
+const sessionSearchPromise =
+  sessionNamesFilter.length > 0
+    ? this.post("/records/sunfire_saved_sessions/search?ordering=-updated", {
+        query: [
+          {
+            and: true,
+            filters: [
+              {
+                type: "fields_v2",
+                subtype: "non_custom",
+                field: "created",
+                condition: ">=",
+                value: ninetyDaysAgo.toISOString(),
+              },
+            ],
+          },
+          {
+            and: false,
+            filters: sessionNamesFilter,
+          },
+        ],
+        and: true,
+      })
+    : Promise.resolve({ results: [] });
 
 // Provider records
 const providersField = obj.fields.find((f) => f.name === "providers");
@@ -387,7 +391,7 @@ let failedImports = { drugs: [], doctors: [], pharmacy: null };
 
 const sessionIdResponse = await sessionSearchPromise;
 
-const sessionOptions = sessionIdResponse?.results.map((record) => {
+const sessionOptions = (sessionIdResponse?.results ?? []).map((record) => {
   const sessionName = Object.values(record.fields).find((f) => f.name === "name")?.value;
   const sessionUpdated = Object.values(record.fields).find((f) => f.name === "updated")?.value;
   return {
@@ -412,31 +416,35 @@ const sessionPromptContent = [
     id: "session_id",
     label: "Select SunFire Session",
     options: sessionOptions,
+    defaultValue: sessionOptions[0]?.value,
   },
 ];
 
-const sessionPromptResponse = await this.prompt({
-  title: "Select SunFire Session",
-  confirmButton: {
-    label: "Continue",
-    variant: "standard",
-    color: "primary",
-  },
-  cancelButton: {
-    label: "Create New Session",
-    variant: "text",
-    color: "secondary",
-  },
-  content: sessionPromptContent,
-});
-
-if (sessionPromptResponse.canceled && sessionPromptResponse.eventSource === "close") {
-  this.setIndicator("none");
-  return;
-}
+// no saved sessions: skip the prompt and create a new one
 let customer_code = null;
-if (!sessionPromptResponse.canceled && sessionPromptResponse.values.session_id) {
-  customer_code = sessionPromptResponse.values.session_id.value;
+if (sessionOptions.length > 0) {
+  const sessionPromptResponse = await this.prompt({
+    title: "Select SunFire Session",
+    confirmButton: {
+      label: "Continue",
+      variant: "standard",
+      color: "primary",
+    },
+    cancelButton: {
+      label: "Create New Session",
+      variant: "text",
+      color: "secondary",
+    },
+    content: sessionPromptContent,
+  });
+
+  if (sessionPromptResponse.canceled && sessionPromptResponse.eventSource === "close") {
+    this.setIndicator("none");
+    return;
+  }
+  if (!sessionPromptResponse.canceled && sessionPromptResponse.values.session_id) {
+    customer_code = sessionPromptResponse.values.session_id.value;
+  }
 }
 
 const providerRecords = await providerRecordsPromise;
