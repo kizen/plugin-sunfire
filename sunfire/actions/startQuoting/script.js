@@ -521,24 +521,24 @@ if (sessionResponseData?.session) {
       });
     }
 
-    if (indicesToRemove.length > 0) {
-      // Reverse sort indices so that we remove from the end first and don't mess up the indices of remaining doctors
-      indicesToRemove.sort((a, b) => b - a);
-      await this.patch(
-        this.getServiceUrl(`api_${env}`, "/v2/session"),
-        {
-          customerCode: customer_code,
-          operations: indicesToRemove.map((idx) => ({
-            op: "remove",
-            path: `/doctors/${idx}`,
-          })),
-        },
-        {
-          headers: { "X-Proxy-Authorization": partnerAuthToken },
-        },
-      );
-    }
-  }
+  //   if (indicesToRemove.length > 0) {
+  //     // Reverse sort indices so that we remove from the end first and don't mess up the indices of remaining doctors
+  //     indicesToRemove.sort((a, b) => b - a);
+  //     await this.patch(
+  //       this.getServiceUrl(`api_${env}`, "/v2/session"),
+  //       {
+  //         customerCode: customer_code,
+  //         operations: indicesToRemove.map((idx) => ({
+  //           op: "remove",
+  //           path: `/doctors/${idx}`,
+  //         })),
+  //       },
+  //       {
+  //         headers: { "X-Proxy-Authorization": partnerAuthToken },
+  //       },
+  //     );
+  //   }
+  // }
 
   await this.post("/records/sunfire_saved_sessions/add", {
     fields: [
