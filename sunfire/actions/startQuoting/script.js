@@ -547,6 +547,8 @@ if (sessionResponseData?.session) {
       { name: "applicant", value: { id: contact.id } },
     ],
   });
+
+  prospectPostBody["metadata.customerCode"] = customer_code;
 }
 
 const hasZip = Boolean(prospectPostBody["applicant.home.zip"]);
