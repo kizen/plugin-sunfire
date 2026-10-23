@@ -435,7 +435,7 @@ if (sessionOptions.length > 0) {
 let sessionResponseData, sessionError;
 if (partnerAuthToken && !customer_code) {
   [sessionResponseData, sessionError] = await Promise.race([
-    this.postWithErrors(this.getServiceUrl(`api_${env}`, "/v2/session/external/convert"), sessionPostBody, {
+    this.postWithErrors(this.getServiceUrl(`api_${env}`, "/v2/session/external/convert?convertOption=2"), sessionPostBody, {
       headers: {
         "X-Proxy-Authorization": partnerAuthToken,
       },
