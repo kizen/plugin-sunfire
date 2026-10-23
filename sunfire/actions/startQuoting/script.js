@@ -33,14 +33,6 @@ const buildDrugValues = (drugNames, drugDisplayNames) => {
   });
 };
 
-const buildProviderZipByNpi = (providerRecords) => {
-  return Object.fromEntries(
-    providerRecords
-      .map((r) => [r.name, Object.values(r.fields).find((f) => f.name === "zip")?.value])
-      .filter(([, zip]) => zip),
-  );
-};
-
 const buildProspectBody = (contact, business, fields, { crmPartnerId, partnerAppId, partnerId }) => {
   const body = {
     "applicant.firstName": fields.first_name.value,
@@ -321,14 +313,6 @@ const sessionSearchPromise =
       })
     : Promise.resolve({ results: [] });
 
-// Provider records
-const providersField = obj.fields.find((f) => f.name === "providers");
-const providerEntityIds = [].concat(fields.providers?.value ?? []);
-const providerRecordsPromise =
-  providerEntityIds.length > 0
-    ? Promise.all(providerEntityIds.map((id) => this.getEntity(providersField.relation.related_object, id)))
-    : Promise.resolve([]);
-
 // Auth (only for CRM partners; requires CRM connect code — prompt user if not yet saved)
 const crmPartnerId = this.args.crm_partner_id;
 let crmConnectCode = crmPartnerId ? employeePluginConfig?.config?.crm_connect_code : null;
@@ -447,9 +431,6 @@ if (sessionOptions.length > 0) {
   }
 }
 
-const providerRecords = await providerRecordsPromise;
-const providerZipByNpi = buildProviderZipByNpi(providerRecords);
-
 // If user selected an existing session, we can skip session creation and just open the URL with the existing customer code. Only create a new session if selected "Create New Session".
 let sessionResponseData, sessionError;
 if (partnerAuthToken && !customer_code) {
@@ -497,48 +478,6 @@ if (partnerAuthToken && !customer_code) {
 // only post-process a newly created session
 if (sessionResponseData?.session) {
   customer_code = sessionResponseData.session.customerCode;
-
-  if (sessionResponseData.session?.doctors?.length > 0 && Object.keys(providerZipByNpi).length > 0) {
-    // SF returns all provider addresses per NPI, filter to just the one that matches kizen provider record zip.
-    // Remove all others through session update. Default to first if no zips match.
-    const sessionDoctors = sessionResponseData.session.doctors;
-
-    const npiGroups = sessionDoctors.reduce((acc, doc, idx) => {
-      if (!acc[doc.npi]) acc[doc.npi] = [];
-      acc[doc.npi].push({ doc, idx });
-      return acc;
-    }, {});
-
-    const indicesToRemove = [];
-    for (const [npi, entries] of Object.entries(npiGroups)) {
-      if (entries.length <= 1) continue;
-      const expectedZip = providerZipByNpi[npi];
-      const matchIdx = entries.findIndex(({ doc }) => doc.address?.zip === expectedZip);
-      // If we find a match based on zip, keep that doctor and remove the rest. If no match, just keep the first one and remove the rest.
-      const keepIdx = matchIdx !== -1 ? matchIdx : 0;
-      entries.forEach(({ idx }, i) => {
-        if (i !== keepIdx) indicesToRemove.push(idx);
-      });
-    }
-
-    //   if (indicesToRemove.length > 0) {
-    //     // Reverse sort indices so that we remove from the end first and don't mess up the indices of remaining doctors
-    //     indicesToRemove.sort((a, b) => b - a);
-    //     await this.patch(
-    //       this.getServiceUrl(`api_${env}`, "/v2/session"),
-    //       {
-    //         customerCode: customer_code,
-    //         operations: indicesToRemove.map((idx) => ({
-    //           op: "remove",
-    //           path: `/doctors/${idx}`,
-    //         })),
-    //       },
-    //       {
-    //         headers: { "X-Proxy-Authorization": partnerAuthToken },
-    //       },
-    //     );
-    //   }
-  }
 
   await this.post("/records/sunfire_saved_sessions/add", {
     fields: [
