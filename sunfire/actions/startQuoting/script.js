@@ -479,6 +479,33 @@ if (partnerAuthToken && !customer_code) {
 if (sessionResponseData?.session) {
   customer_code = sessionResponseData.session.customerCode;
 
+  // SunFire won't show the pharmacy unless the session's profile says the applicant has one
+  if (sessionPostBody.pharmacy && !failedImports.pharmacy) {
+    const [, pharmacyAnswerError] = await this.patchWithErrors(
+      this.getServiceUrl(`api_${env}`, "/v2/session"),
+      {
+        customerCode: customer_code,
+        operations: [
+          {
+            op: "add",
+            path: "/profile/answers",
+            value: { pharmacy: "y" },
+          },
+        ],
+      },
+      {
+        headers: { "X-Proxy-Authorization": partnerAuthToken },
+      },
+    );
+    if (pharmacyAnswerError) {
+      this.console.error("SunFire pharmacy answer update failed:", pharmacyAnswerError);
+      this.showToast(`SunFire couldn't save the pharmacy to the session (${describeError(pharmacyAnswerError)}).`, {
+        variant: "alert",
+        autohide: false,
+      });
+    }
+  }
+
   await this.post("/records/sunfire_saved_sessions/add", {
     fields: [
       { name: "name", value: customer_code },
