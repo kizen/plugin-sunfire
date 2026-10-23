@@ -483,7 +483,8 @@ if (partnerAuthToken && !customer_code) {
 if (sessionResponseData?.session) {
   customer_code = sessionResponseData.session.customerCode;
 
-  // SunFire won't show the pharmacy unless the session's profile says the applicant has one
+  // SunFire won't show the pharmacy unless the session's profile says the applicant has one.
+  // A converted session has no profile yet, and SunFire ignores patches to paths under a missing parent.
   if (sessionPostBody.pharmacy && !failedImports.pharmacy) {
     const [, pharmacyAnswerError] = await this.patchWithErrors(
       this.getServiceUrl(`api_${env}`, "/v2/session"),
@@ -491,9 +492,9 @@ if (sessionResponseData?.session) {
         customerCode: customer_code,
         operations: [
           {
-            op: "replace",
-            path: "/profile/answers",
-            value: { pharmacy: "y" },
+            op: "add",
+            path: "/profile",
+            value: { answers: { pharmacy: "y" } },
           },
         ],
       },
