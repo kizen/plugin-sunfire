@@ -435,11 +435,15 @@ if (sessionOptions.length > 0) {
 let sessionResponseData, sessionError;
 if (partnerAuthToken && !customer_code) {
   [sessionResponseData, sessionError] = await Promise.race([
-    this.postWithErrors(this.getServiceUrl(`api_${env}`, "/v2/session/external/convert?convertOption=2"), sessionPostBody, {
-      headers: {
-        "X-Proxy-Authorization": partnerAuthToken,
+    this.postWithErrors(
+      this.getServiceUrl(`api_${env}`, "/v2/session/external/convert?convertOption=2"),
+      sessionPostBody,
+      {
+        headers: {
+          "X-Proxy-Authorization": partnerAuthToken,
+        },
       },
-    }),
+    ),
     new Promise((resolve) => {
       setTimeout(() => {
         resolve([null, { timedOut: true }]);
@@ -487,7 +491,7 @@ if (sessionResponseData?.session) {
         customerCode: customer_code,
         operations: [
           {
-            op: "add",
+            op: "replace",
             path: "/profile/answers",
             value: { pharmacy: "y" },
           },
